@@ -1,0 +1,1065 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Delivery Time Predictor</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231B4FD8'/%3E%3Cpath d='M8 22h8a4 4 0 0 0 0-8h-1a4 4 0 0 1 0-8h9' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        --bg: #edf0f3;
+        --panel: #ffffff;
+        --ink: #17212b;
+        --muted: #5b6673;
+        --line: #d5dbe2;
+        --soft: #f5f7f9;
+        --primary: #1b4fd8;
+        --primary-ink: #ffffff;
+        --primary-soft: #dfe8fc;
+        --delay: #d97706;
+        --delay-soft: #fdf0dc;
+        --good: #12805c;
+        --good-soft: #dcf3ea;
+        --bad: #b42318;
+        --bad-soft: #fde8e6;
+        --lane: #b9c4d6;
+        --radius: 8px;
+        --font:
+          "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
+          "Helvetica Neue", Arial, sans-serif;
+        --mono: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f1620;
+          --panel: #16202c;
+          --ink: #e8edf3;
+          --muted: #9aa7b5;
+          --line: #273445;
+          --soft: #1b2634;
+          --primary: #6c98ff;
+          --primary-ink: #0b1220;
+          --primary-soft: #1d2d52;
+          --delay: #f2a33a;
+          --delay-soft: #3a2b12;
+          --good: #3ccb93;
+          --good-soft: #12352a;
+          --bad: #ff8a7a;
+          --bad-soft: #3d1b18;
+          --lane: #3a4a60;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font);
+        font-size: 15px;
+        line-height: 1.5;
+      }
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+      :focus-visible {
+        outline: 3px solid var(--primary);
+        outline-offset: 2px;
+      }
+
+      /* ---------- header ---------- */
+      .top {
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+      }
+      .top-inner {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 14px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .brand svg {
+        flex: none;
+      }
+      .brand h1 {
+        font-size: 18px;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+      }
+      .brand p {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--muted);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 5px 12px 5px 10px;
+      }
+      .status i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--good);
+        display: inline-block;
+      }
+
+      /* ---------- layout ---------- */
+      main {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 24px 20px 56px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 24px;
+      }
+      main > * {
+        min-width: 0;
+      }
+      @media (min-width: 920px) {
+        main {
+          grid-template-columns: 340px minmax(0, 1fr);
+          align-items: start;
+        }
+        .history {
+          grid-column: 1 / -1;
+        }
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+      }
+      .panel > header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .panel > header h2 {
+        font-size: 16px;
+        font-weight: 650;
+      }
+      .panel > header span {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .body {
+        padding: 20px;
+      }
+
+      /* ---------- form ---------- */
+      .field {
+        margin-bottom: 18px;
+      }
+      .field > label,
+      .field > .legend {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      .hint {
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .input {
+        position: relative;
+        display: flex;
+        align-items: stretch;
+        min-width: 0;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--panel);
+      }
+      .input:focus-within {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-soft);
+      }
+      .input input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        padding: 9px 12px;
+        border-radius: 6px;
+      }
+      .input input:focus-visible {
+        outline: none;
+      }
+      .input .unit {
+        display: grid;
+        place-items: center;
+        padding: 0 12px;
+        color: var(--muted);
+        font-size: 13px;
+        border-left: 1px solid var(--line);
+        background: var(--soft);
+        border-radius: 0 6px 6px 0;
+      }
+      .row2 {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 12px;
+      }
+      .row2 > .field {
+        min-width: 0;
+      }
+      .row2 .field {
+        margin-bottom: 18px;
+      }
+
+      .segments {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .seg {
+        position: relative;
+      }
+      .seg input {
+        position: absolute;
+        opacity: 0;
+        inset: 0;
+        cursor: pointer;
+      }
+      .seg span {
+        display: block;
+        text-align: center;
+        padding: 9px 4px;
+        font-size: 14px;
+        border-left: 1px solid var(--line);
+        color: var(--muted);
+        user-select: none;
+      }
+      .seg:first-child span {
+        border-left: 0;
+      }
+      .seg input:checked + span {
+        background: var(--primary);
+        color: var(--primary-ink);
+        font-weight: 600;
+      }
+      .seg input:focus-visible + span {
+        outline: 3px solid var(--primary);
+        outline-offset: -3px;
+      }
+
+      .chips {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        font: inherit;
+        font-size: 13px;
+        padding: 3px 10px;
+        cursor: pointer;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--panel);
+        color: var(--muted);
+      }
+      .chip:hover {
+        border-color: var(--delay);
+        color: var(--ink);
+      }
+
+      .btn {
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        border-radius: 6px;
+        padding: 10px 16px;
+        border: 1px solid transparent;
+      }
+      .btn-primary {
+        background: var(--primary);
+        color: var(--primary-ink);
+        width: 100%;
+      }
+      .btn-primary:hover {
+        filter: brightness(1.08);
+      }
+      .btn-primary[disabled] {
+        opacity: 0.6;
+        cursor: progress;
+      }
+      .btn-quiet {
+        background: var(--panel);
+        color: var(--ink);
+        border-color: var(--line);
+        padding: 5px 12px;
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .btn-quiet:hover {
+        background: var(--soft);
+      }
+
+      .alert {
+        background: var(--bad-soft);
+        color: var(--bad);
+        border: 1px solid var(--bad);
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 13.5px;
+        margin-bottom: 16px;
+      }
+
+      /* ---------- result ---------- */
+      .empty {
+        padding: 56px 24px;
+        text-align: center;
+        color: var(--muted);
+      }
+      .empty svg {
+        margin-bottom: 14px;
+        color: var(--lane);
+      }
+      .empty h3 {
+        color: var(--ink);
+        font-size: 16px;
+        margin-bottom: 4px;
+      }
+
+      .headline {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        padding-bottom: 20px;
+      }
+      .big {
+        font-size: 64px;
+        line-height: 1;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        font-variant-numeric: tabular-nums;
+      }
+      .big small {
+        font-size: 20px;
+        font-weight: 500;
+        color: var(--muted);
+        letter-spacing: 0;
+        margin-left: 6px;
+      }
+      .who {
+        color: var(--muted);
+        margin-top: 8px;
+      }
+      .who b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .pill {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 650;
+      }
+      .pill.delay {
+        background: var(--delay-soft);
+        color: var(--delay);
+      }
+      .pill.ok {
+        background: var(--good-soft);
+        color: var(--good);
+      }
+
+      .sum {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        overflow: hidden;
+        margin-bottom: 24px;
+      }
+      .sum div {
+        padding: 10px 14px;
+        border-left: 1px solid var(--line);
+      }
+      .sum div:first-child {
+        border-left: 0;
+      }
+      .sum dt {
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      .sum dd {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 650;
+        font-variant-numeric: tabular-nums;
+      }
+      .sum .d dd {
+        color: var(--delay);
+      }
+
+      .section-title {
+        font-size: 14px;
+        font-weight: 650;
+        margin-bottom: 2px;
+      }
+      .section-sub {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 14px;
+      }
+
+      .lanes {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .lane {
+        display: grid;
+        grid-template-columns: 92px 1fr;
+        align-items: center;
+        gap: 12px;
+      }
+      .lane .name {
+        font-size: 14px;
+      }
+      .lane.chosen .name {
+        font-weight: 650;
+      }
+      .track {
+        position: relative;
+        height: 30px;
+        border-radius: 6px;
+        background: var(--soft);
+        border: 1px solid var(--line);
+        display: flex;
+        align-items: stretch;
+        overflow: hidden;
+      }
+      .bar {
+        width: 0;
+        background: var(--lane);
+        transition: width 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding-right: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        color: var(--ink);
+        white-space: nowrap;
+      }
+      .lane.chosen .bar:not(.late) {
+        background: var(--primary);
+        color: var(--primary-ink);
+      }
+      .lane .bar.late {
+        background: repeating-linear-gradient(
+          -45deg,
+          var(--delay) 0 5px,
+          transparent 5px 10px
+        );
+        background-color: var(--delay-soft);
+        color: var(--delay);
+        border-left: 2px solid var(--delay);
+      }
+      .bar.late span {
+        background: var(--delay-soft);
+        padding: 0 6px;
+        border-radius: 4px;
+        line-height: 22px;
+      }
+      .tag {
+        margin-left: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--good);
+        align-self: center;
+        white-space: nowrap;
+      }
+      .legend-row {
+        display: flex;
+        gap: 18px;
+        font-size: 12.5px;
+        color: var(--muted);
+        margin: 10px 0 0 104px;
+        flex-wrap: wrap;
+      }
+      .legend-row span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .legend-row i {
+        width: 14px;
+        height: 10px;
+        border-radius: 2px;
+        display: inline-block;
+      }
+      .takeaway {
+        margin-top: 16px;
+        padding: 10px 14px;
+        background: var(--soft);
+        border-radius: 6px;
+        font-size: 14px;
+      }
+
+      details.json {
+        margin-top: 24px;
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+      }
+      details.json summary {
+        cursor: pointer;
+        font-weight: 650;
+        font-size: 14px;
+      }
+      .json-head {
+        display: flex;
+        justify-content: flex-end;
+        margin: 10px 0 8px;
+      }
+      pre {
+        margin: 0;
+        background: var(--soft);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 14px;
+        overflow-x: auto;
+        font-family: var(--mono);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      /* ---------- history ---------- */
+      .tablewrap {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--line);
+        white-space: nowrap;
+      }
+      th {
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--muted);
+        background: var(--soft);
+      }
+      td.num,
+      th.num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      tbody tr:last-child td {
+        border-bottom: 0;
+      }
+      td .pill {
+        padding: 2px 10px;
+        font-size: 12px;
+      }
+      .history .none {
+        padding: 28px 20px;
+        color: var(--muted);
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .bar {
+          transition: none;
+        }
+      }
+      @media (max-width: 520px) {
+        .big {
+          font-size: 52px;
+        }
+        .lane {
+          grid-template-columns: 78px 1fr;
+          gap: 8px;
+        }
+        .legend-row {
+          margin-left: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <div class="top-inner">
+        <div class="brand">
+          <svg width="36" height="36" viewBox="0 0 32 32" aria-hidden="true">
+            <rect width="32" height="32" rx="7" fill="#1b4fd8" />
+            <path
+              d="M8 22h8a4 4 0 0 0 0-8h-1a4 4 0 0 1 0-8h9"
+              fill="none"
+              stroke="#fff"
+              stroke-width="2.4"
+              stroke-linecap="round"
+            />
+          </svg>
+          <div>
+            <h1>Delivery Time Predictor</h1>
+            <p>Estimates from the saved model, with delay planning</p>
+          </div>
+        </div>
+        <div class="status"><i></i> Saved model loaded, running offline</div>
+      </div>
+    </div>
+
+    <main>
+      <!-- ===== form ===== -->
+      <section class="panel" aria-labelledby="formTitle">
+        <header><h2 id="formTitle">Delivery details</h2></header>
+        <form class="body" id="form" novalidate>
+          <div class="alert" id="formError" role="alert" hidden></div>
+
+          <div class="field">
+            <label for="customer_name">Customer name</label>
+            <div class="input">
+              <input
+                id="customer_name"
+                name="customer_name"
+                value="Juan Dela Cruz"
+                autocomplete="off"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="row2">
+            <div class="field">
+              <label for="distance_km">Distance</label>
+              <div class="input">
+                <input
+                  id="distance_km"
+                  name="distance_km"
+                  type="number"
+                  min="0.1"
+                  max="200"
+                  step="any"
+                  value="25"
+                  inputmode="decimal"
+                  required
+                />
+                <span class="unit">km</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="weight_kg">Weight</label>
+              <div class="input">
+                <input
+                  id="weight_kg"
+                  name="weight_kg"
+                  type="number"
+                  min="0.1"
+                  max="100"
+                  step="any"
+                  value="3"
+                  inputmode="decimal"
+                  required
+                />
+                <span class="unit">kg</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="field" role="radiogroup" aria-labelledby="vehLabel">
+            <span
+              class="legend"
+              id="vehLabel"
+              style="
+                display: block;
+                font-size: 13px;
+                font-weight: 600;
+                margin-bottom: 6px;
+              "
+              >Vehicle</span
+            >
+            <div class="segments" id="vehicles"></div>
+          </div>
+
+          <div class="field">
+            <label for="additional_delay_minutes">Hypothetical delay</label>
+            <div class="input">
+              <input
+                id="additional_delay_minutes"
+                name="additional_delay_minutes"
+                type="number"
+                min="0"
+                max="1440"
+                step="any"
+                value="20"
+                inputmode="decimal"
+              />
+              <span class="unit">min</span>
+            </div>
+            <div class="chips" id="chips">
+              <button type="button" class="chip" data-v="0">No delay</button>
+              <button type="button" class="chip" data-v="10">10 min</button>
+              <button type="button" class="chip" data-v="20">20 min</button>
+              <button type="button" class="chip" data-v="30">30 min</button>
+              <button type="button" class="chip" data-v="60">1 hour</button>
+            </div>
+            <p class="hint">
+              Traffic, weather, or a long queue. It is added to the model's
+              estimate.
+            </p>
+          </div>
+
+          <button class="btn btn-primary" id="go" type="submit">
+            Predict delivery time
+          </button>
+        </form>
+      </section>
+
+      <!-- ===== result ===== -->
+      <section class="panel" aria-labelledby="resTitle" aria-live="polite">
+        <header>
+          <h2 id="resTitle">Estimate</h2>
+          <span id="resNote"></span>
+        </header>
+
+        <div class="empty" id="empty">
+          <svg width="48" height="48" viewBox="0 0 32 32" aria-hidden="true">
+            <path
+              d="M6 24h9a5 5 0 0 0 0-10h-2a5 5 0 0 1 0-10h11"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+            />
+            <circle cx="6" cy="24" r="2.5" fill="currentColor" />
+            <circle cx="24" cy="4" r="2.5" fill="currentColor" />
+          </svg>
+          <h3>No estimate yet</h3>
+          <p>Fill in the delivery details and select Predict delivery time.</p>
+        </div>
+
+        <div class="body" id="result" hidden>
+          <div class="headline">
+            <div>
+              <div class="big">
+                <span id="rAdjusted">0</span><small>min</small>
+              </div>
+              <p class="who">Estimated delivery for <b id="rName"></b></p>
+            </div>
+            <span class="pill" id="rStatus"></span>
+          </div>
+
+          <dl class="sum" style="margin-top: 0">
+            <div>
+              <dt>Model estimate</dt>
+              <dd><span id="rBase"></span> min</dd>
+            </div>
+            <div class="d">
+              <dt>Added delay</dt>
+              <dd>+<span id="rDelay"></span> min</dd>
+            </div>
+            <div>
+              <dt>Package</dt>
+              <dd id="rPkg"></dd>
+            </div>
+          </dl>
+
+          <h3 class="section-title">Same package, each vehicle</h3>
+          <p class="section-sub">
+            Model estimates for this distance and weight. The delay applies to
+            your chosen vehicle.
+          </p>
+          <div class="lanes" id="lanes"></div>
+          <div class="legend-row">
+            <span><i style="background: var(--primary)"></i>Your vehicle</span>
+            <span><i style="background: var(--lane)"></i>Other vehicles</span>
+            <span
+              ><i
+                style="
+                  background: repeating-linear-gradient(
+                    -45deg,
+                    var(--delay) 0 3px,
+                    transparent 3px 6px
+                  );
+                  border: 1px solid var(--delay);
+                "
+              ></i
+              >Added delay</span
+            >
+          </div>
+          <p class="takeaway" id="takeaway"></p>
+
+          <details class="json" open>
+            <summary>JSON output</summary>
+            <div class="json-head">
+              <button type="button" class="btn btn-quiet" id="copy">
+                Copy JSON
+              </button>
+            </div>
+            <pre id="json"></pre>
+          </details>
+        </div>
+      </section>
+
+      <!-- ===== history ===== -->
+      <section class="panel history" aria-labelledby="histTitle">
+        <header>
+          <h2 id="histTitle">History</h2>
+          <span id="histNote">Saved to delivery_history.csv</span>
+        </header>
+        <div class="none" id="histEmpty" hidden>
+          No predictions saved yet. Each estimate you run is added here and to
+          delivery_history.csv.
+        </div>
+        <div class="tablewrap" id="histWrap" hidden>
+          <table>
+            <caption hidden>
+              Saved delivery predictions, newest first
+            </caption>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Customer</th>
+                <th>Vehicle</th>
+                <th class="num">Distance</th>
+                <th class="num">Weight</th>
+                <th class="num">Model</th>
+                <th class="num">Delay</th>
+                <th class="num">Adjusted</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="histBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const TRANSPORTS = __TRANSPORTS__;
+      const $ = (s) => document.querySelector(s);
+
+      // ----- vehicle selector -----
+      $("#vehicles").innerHTML = TRANSPORTS.map(
+        (t, i) =>
+          `<label class="seg"><input type="radio" name="transportation" value="${t}" ${i === 0 ? "checked" : ""}><span>${t}</span></label>`,
+      ).join("");
+
+      // ----- delay shortcuts -----
+      $("#chips").addEventListener("click", (e) => {
+        const b = e.target.closest(".chip");
+        if (b) $("#additional_delay_minutes").value = b.dataset.v;
+      });
+
+      const fmt = (n) =>
+        Number.isInteger(+n) ? String(+n) : String(+(+n).toFixed(1));
+
+      // ----- submit -----
+      $("#form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const err = $("#formError"),
+          btn = $("#go");
+        err.hidden = true;
+        const payload = Object.fromEntries(new FormData(e.target).entries());
+        btn.disabled = true;
+        btn.textContent = "Predicting...";
+        try {
+          const res = await fetch("/predict", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            err.textContent = data.error || "Something went wrong.";
+            err.hidden = false;
+            return;
+          }
+          showResult(data);
+          loadHistory();
+        } catch (ex) {
+          err.textContent =
+            "Cannot reach the local server. Check that server.py is still running.";
+          err.hidden = false;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Predict delivery time";
+        }
+      });
+
+      // ----- result -----
+      function showResult(r) {
+        $("#empty").hidden = true;
+        $("#result").hidden = false;
+        $("#resNote").textContent = "Just now";
+
+        $("#rAdjusted").textContent = fmt(r.adjusted_estimated_minutes);
+        $("#rName").textContent = r.customer_name;
+        $("#rBase").textContent = fmt(r.model_predicted_minutes);
+        $("#rDelay").textContent = fmt(r.additional_delay_minutes);
+        $("#rPkg").textContent =
+          `${fmt(r.distance_km)} km, ${fmt(r.weight_kg)} kg`;
+
+        const pill = $("#rStatus");
+        pill.textContent = r.delivery_status;
+        pill.className =
+          "pill " + (r.additional_delay_minutes > 0 ? "delay" : "ok");
+
+        // lanes
+        const cmp = r.transport_comparison;
+        const max = Math.max(
+          ...Object.values(cmp),
+          r.adjusted_estimated_minutes,
+        );
+        const lanes = $("#lanes");
+        lanes.innerHTML = "";
+        const grow = [];
+        Object.entries(cmp).forEach(([name, mins]) => {
+          const chosen = name === r.transportation;
+          const lane = document.createElement("div");
+          lane.className = "lane" + (chosen ? " chosen" : "");
+          const label = document.createElement("div");
+          label.className = "name";
+          label.textContent = name;
+          const track = document.createElement("div");
+          track.className = "track";
+          const bar = document.createElement("div");
+          bar.className = "bar";
+          bar.textContent = fmt(mins);
+          track.appendChild(bar);
+          grow.push([bar, (mins / max) * 100]);
+          if (chosen && r.additional_delay_minutes > 0) {
+            const late = document.createElement("div");
+            late.className = "bar late";
+            const lbl = document.createElement("span");
+            lbl.textContent = "+" + fmt(r.additional_delay_minutes);
+            late.appendChild(lbl);
+            track.appendChild(late);
+            grow.push([late, (r.additional_delay_minutes / max) * 100]);
+          }
+          if (name === r.fastest_transportation) {
+            const tag = document.createElement("span");
+            tag.className = "tag";
+            tag.textContent = "Fastest";
+            track.appendChild(tag);
+          }
+          lane.append(label, track);
+          lanes.appendChild(lane);
+        });
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() =>
+            grow.forEach(([el, pct]) => {
+              el.style.width = pct + "%";
+            }),
+          ),
+        );
+
+        const diff = r.model_predicted_minutes - cmp[r.fastest_transportation];
+        $("#takeaway").textContent =
+          diff <= 0
+            ? `${r.transportation} is the fastest option for this package.`
+            : `${r.fastest_transportation} would be ${fmt(diff)} min faster than ${r.transportation} before any delay.`;
+
+        $("#json").textContent = JSON.stringify(r, null, 2);
+      }
+
+      $("#copy").addEventListener("click", async (e) => {
+        try {
+          await navigator.clipboard.writeText($("#json").textContent);
+          e.target.textContent = "Copied";
+        } catch (ex) {
+          e.target.textContent = "Select the text to copy";
+        }
+        setTimeout(() => (e.target.textContent = "Copy JSON"), 1600);
+      });
+
+      // ----- history -----
+      async function loadHistory() {
+        let rows = [];
+        try {
+          rows = await (await fetch("/history")).json();
+        } catch (ex) {
+          return;
+        }
+        const body = $("#histBody");
+        body.innerHTML = "";
+        $("#histEmpty").hidden = rows.length > 0;
+        $("#histWrap").hidden = rows.length === 0;
+        $("#histNote").textContent = rows.length
+          ? `${rows.length} saved to delivery_history.csv`
+          : "Saved to delivery_history.csv";
+        rows
+          .slice()
+          .reverse()
+          .forEach((r) => {
+            const tr = document.createElement("tr");
+            const cell = (text, cls) => {
+              const td = document.createElement("td");
+              if (cls) td.className = cls;
+              td.textContent = text;
+              tr.appendChild(td);
+              return td;
+            };
+            cell(r.timestamp.slice(5, 16));
+            cell(r.customer_name);
+            cell(r.transportation);
+            cell(r.distance_km + " km", "num");
+            cell(r.weight_kg + " kg", "num");
+            cell(r.model_predicted_minutes + " min", "num");
+            cell("+" + r.additional_delay_minutes + " min", "num");
+            cell(
+              r.adjusted_estimated_minutes + " min",
+              "num",
+            ).style.fontWeight = "650";
+            const st = cell("");
+            const p = document.createElement("span");
+            p.className =
+              "pill " + (r.delivery_status === "DELAY ADDED" ? "delay" : "ok");
+            p.textContent = r.delivery_status;
+            st.appendChild(p);
+            body.appendChild(tr);
+          });
+      }
+      loadHistory();
+    </script>
+  </body>
+</html>

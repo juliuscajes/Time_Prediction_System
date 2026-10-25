@@ -1,0 +1,13 @@
+timestamp,customer_name,distance_km,weight_kg,transportation,model_predicted_minutes,additional_delay_minutes,adjusted_estimated_minutes,delivery_status,fastest_transportation
+2026-10-25 10:16:56,Juan Dela Cruz,25,3,Motorcycle,58,20,78,DELAY ADDED,Motorcycle
+2026-10-25 10:16:58,Maria Santos,5,2,Bicycle,35,10,45,DELAY ADDED,Motorcycle
+2026-10-25 10:17:01,Jose Rizal,30,10,Car,86,45,131,DELAY ADDED,Motorcycle
+2026-10-25 10:17:03,Ana Reyes,12,4,Motorcycle,35,0,35,NO DELAY,Motorcycle
+2026-10-25 10:17:05,Pedro Penduko,18,6,Car,58,15,73,DELAY ADDED,Motorcycle
+2026-10-25 10:17:14,Juan Dela Cruz,25,3,Motorcycle,58,20,78,DELAY ADDED,Motorcycle
+2026-10-25 10:46:32,Juan Dela Cruz,25,3,Motorcycle,58,20,78,DELAY ADDED,Motorcycle
+2026-10-25 10:46:34,Maria Santos,5,2,Bicycle,35,10,45,DELAY ADDED,Motorcycle
+2026-10-25 10:46:36,Jose Rizal,30,10,Car,86,45,131,DELAY ADDED,Motorcycle
+2026-10-25 10:46:38,Ana Reyes,12,4,Motorcycle,35,0,35,NO DELAY,Motorcycle
+2026-10-25 10:47:44,Pedro Penduko,18,6,Car,58,15,73,DELAY ADDED,Motorcycle
+2026-10-25 10:51:49,sample_name,23,3,Motorcycle,55,0,55,NO DELAY,Motorcycle
